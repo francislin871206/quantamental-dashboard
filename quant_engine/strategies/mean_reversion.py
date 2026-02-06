@@ -4,8 +4,11 @@ Buy when price < lower band, Sell at the midline (SMA).
 """
 
 import pandas as pd
-from quant_engine.base_strategy import BaseStrategy
-from quant_engine.indicators import calculate_bollinger_bands
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from base_strategy import BaseStrategy
+from indicators import calculate_bollinger_bands
 
 
 class MeanReversionStrategy(BaseStrategy):

@@ -5,7 +5,10 @@ Uses price momentum with volume confirmation for trend-following trades.
 
 import pandas as pd
 import numpy as np
-from quant_engine.base_strategy import BaseStrategy
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from base_strategy import BaseStrategy
 
 
 class MomentumStrategy(BaseStrategy):

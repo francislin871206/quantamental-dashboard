@@ -5,7 +5,10 @@ and sell signals when short-term MA crosses below long-term MA (Death Cross).
 """
 
 import pandas as pd
-from quant_engine.base_strategy import BaseStrategy
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from base_strategy import BaseStrategy
 
 
 class DualMAStrategy(BaseStrategy):

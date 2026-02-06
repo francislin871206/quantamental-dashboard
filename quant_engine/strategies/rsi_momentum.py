@@ -4,8 +4,11 @@ Buy at RSI < 30 (oversold), Sell at RSI > 70 (overbought).
 """
 
 import pandas as pd
-from quant_engine.base_strategy import BaseStrategy
-from quant_engine.indicators import calculate_rsi
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from base_strategy import BaseStrategy
+from indicators import calculate_rsi
 
 
 class RSIMomentumStrategy(BaseStrategy):

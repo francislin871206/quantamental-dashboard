@@ -4,8 +4,11 @@ Buy when price > upper band, Sell when price < lower band.
 """
 
 import pandas as pd
-from quant_engine.base_strategy import BaseStrategy
-from quant_engine.indicators import calculate_bollinger_bands
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from base_strategy import BaseStrategy
+from indicators import calculate_bollinger_bands
 
 
 class BollingerBreakoutStrategy(BaseStrategy):

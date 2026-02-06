@@ -4,14 +4,14 @@ Factory pattern for web dashboard integration.
 """
 
 from typing import Dict, List, Any, Type
-from quant_engine.base_strategy import BaseStrategy
-from quant_engine.strategies.bollinger_breakout import BollingerBreakoutStrategy
-from quant_engine.strategies.mean_reversion import MeanReversionStrategy
-from quant_engine.strategies.rsi_momentum import RSIMomentumStrategy
-from quant_engine.strategies.macd_crossover import MACDCrossoverStrategy
-from quant_engine.strategies.dual_ma import DualMAStrategy
-from quant_engine.strategies.volatility_breakout import VolatilityBreakoutStrategy
-from quant_engine.strategies.momentum import MomentumStrategy
+from base_strategy import BaseStrategy
+from strategies.bollinger_breakout import BollingerBreakoutStrategy
+from strategies.mean_reversion import MeanReversionStrategy
+from strategies.rsi_momentum import RSIMomentumStrategy
+from strategies.macd_crossover import MACDCrossoverStrategy
+from strategies.dual_ma import DualMAStrategy
+from strategies.volatility_breakout import VolatilityBreakoutStrategy
+from strategies.momentum import MomentumStrategy
 
 
 class StrategyFactory:
