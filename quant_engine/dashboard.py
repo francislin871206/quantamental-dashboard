@@ -14,9 +14,12 @@ import streamlit.components.v1 as components
 import sys
 import os
 
+# Add parent directory to path for Streamlit Cloud compatibility
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from quant_engine.strategy_factory import StrategyFactory
-from quant_engine.ai_report import AIReportGenerator
+
+from strategy_factory import StrategyFactory
+from ai_report import AIReportGenerator
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE CONFIG
