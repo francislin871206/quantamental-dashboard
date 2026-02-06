@@ -4,22 +4,33 @@ Design inspired by Cathay Bank & Tesla: Clean, white, minimal, premium.
 """
 
 import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from datetime import datetime, timedelta
-import yfinance as yf
-import streamlit.components.v1 as components
 import sys
 import os
+import traceback
 
 # Add parent directory to path for Streamlit Cloud compatibility
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# We add this BEFORE other local imports to ensure modules are found
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0, current_dir)
+sys.path.insert(0, parent_dir)
 
-from strategy_factory import StrategyFactory
-from ai_report import AIReportGenerator
+try:
+    import pandas as pd
+    import numpy as np
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    from datetime import datetime, timedelta
+    import yfinance as yf
+    import streamlit.components.v1 as components
+
+    from strategy_factory import StrategyFactory
+    from ai_report import AIReportGenerator
+except Exception as e:
+    st.set_page_config(page_title="Startup Error", page_icon="❌")
+    st.error("❌ Critical Startup Error")
+    st.code(traceback.format_exc())
+    st.stop()
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # PAGE CONFIG
