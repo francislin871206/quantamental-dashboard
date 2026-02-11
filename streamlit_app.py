@@ -51,11 +51,20 @@ print("📦 Importing custom modules...", flush=True)
 
 
 # ─── Custom Imports ──────────────────────────────────────────────────────────
+# ─── Custom Imports ──────────────────────────────────────────────────────────
 try:
+    import data_engine  # Import module first to allow reloading
+    import importlib
+    importlib.reload(data_engine)
+    print("🔄 Forced reload of data_engine", flush=True)
+
     from config import SECTOR_MAP, DEFAULT_WEIGHTS, COLORS, PLOTLY_TEMPLATE, FULL_US_UNIVERSE
     print("✅ Imported config", flush=True)
-    from data_engine import analyze_ticker, fetch_price_data, generate_market_summary
-    print("✅ Imported data_engine", flush=True)
+    
+    # Re-import functions from the reloaded module
+    from data_engine import analyze_ticker, fetch_price_data, generate_market_summary, fetch_benchmark_data
+    print("✅ Imported data_engine functions", flush=True)
+    
     from scoring import rank_candidates, get_top_picks, format_market_cap, compute_composite_score
     print("✅ Imported scoring", flush=True)
 except Exception as e:
