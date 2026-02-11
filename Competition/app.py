@@ -20,6 +20,26 @@ from config import SECTOR_MAP, DEFAULT_WEIGHTS, COLORS, PLOTLY_TEMPLATE, FULL_US
 from data_engine import analyze_ticker, fetch_price_data, generate_market_summary
 from scoring import rank_candidates, get_top_picks, format_market_cap, compute_composite_score
 
+# ─── NLTK Setup (Prevent Cloud Crash) ────────────────────────────────────────
+import nltk
+try:
+    nltk.classes
+except AttributeError:
+    pass  # NLTK not loaded properly?
+
+try:
+    nltk.data.find('tokenizers/punkt')
+except LookupError:
+    nltk.download('punkt')
+try:
+    nltk.data.find('tokenizers/punkt_tab')
+except LookupError:
+    try:
+        nltk.download('punkt_tab')
+    except Exception:
+        pass # Older nltk might not need this
+
+
 # ─── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Revolution Stock Selector",
