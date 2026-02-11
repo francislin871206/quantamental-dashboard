@@ -1086,26 +1086,81 @@ elif page == "💼 Portfolio Monitor":
         
         # Create a card for each stock
         with st.container():
-            # Card Header
-            c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 1, 1.5])
-            c1.markdown(f"### {ticker}")
-            c2.metric("Price", f"${p_dat['Price']:.2f}", f"{p_dat['P&L %']:.2f}%")
+            # Card Layout: [Header/Metrics] | [Sparkline Chart]
+            m1, m2 = st.columns([1.5, 1])
             
-            # Action Badge
-            act_color = "#8888aa"
-            if "STOP" in p_dat["Action"]: act_color = "#ff4757"
-            elif "ADD" in p_dat["Action"]: act_color = "#00d4aa"
-            elif "TAKE" in p_dat["Action"]: act_color = "#ffa502"
+            with m1:
+                # Top Row: Ticker & Price
+                c1, c2, c3 = st.columns([1, 1, 1])
+                c1.markdown(f"### {ticker}")
+                c2.metric("Price", f"${p_dat['Price']:.2f}", f"{p_dat['P&L %']:.2f}%")
+                
+                # Action Badge
+                act_color = "#8888aa"
+                if "STOP" in p_dat["Action"]: act_color = "#ff4757"
+                elif "ADD" in p_dat["Action"]: act_color = "#00d4aa"
+                elif "TAKE" in p_dat["Action"]: act_color = "#ffa502"
+                elif "REDUCE" in p_dat["Action"]: act_color = "#ff9f43"
+                
+                c3.markdown(f"""
+                <div style="background-color:{act_color}; color:white; padding:5px 10px; border-radius:5px; text-align:center; font-weight:bold;">
+                    {p_dat['Action']}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Second Row: Stats
+                d1, d2 = st.columns(2)
+                d1.metric("ATR Stop", f"${p_dat['ATR Stop']:.2f}", help="Trailing Stop Level")
+                score_val = analysis.get('composite_score', analysis['sentiment_score'])
+                d2.progress(min(1.0, max(0.0, score_val/10)), text=f"AI Score: {score_val:.1f}/10")
             
-            c3.markdown(f"""
-            <div style="background-color:{act_color}; color:white; padding:5px 10px; border-radius:5px; text-align:center; font-weight:bold;">
-                {p_dat['Action']}
-            </div>
-            """, unsafe_allow_html=True)
+            with m2:
+                # Sparkline Chart
+                hist_df = analysis.get("price_data", pd.DataFrame())
+                if not hist_df.empty:
+                    # Filter last 30 days
+                    recent_df = hist_df.tail(30).reset_index()
+                    # Rename for chart
+                    fig_spark = px.line(recent_df, x=recent_df.columns[0], y="Close")
+                    fig_spark.update_layout(
+                        template="plotly_dark",
+                        margin=dict(l=0, r=0, t=0, b=0),
+                        height=100,
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        xaxis=dict(visible=False),
+                        yaxis=dict(visible=False),
+                        showlegend=False
+                    )
+                    # Color line based on trend
+                    start_p = recent_df.iloc[0]["Close"]
+                    end_p = recent_df.iloc[-1]["Close"]
+                    line_color = COLORS["positive"] if end_p >= start_p else COLORS["negative"]
+                    fig_spark.update_traces(line=dict(color=line_color, width=2))
+                    
+                    st.plotly_chart(fig_spark, use_container_width=True, config={"displayModeBar": False})
+                else:
+                    st.caption("No price history")
+
+            # AI Interpretation (Rule-based)
+            sent = analysis['sentiment_score']
+            tech = analysis['technical_score']
+            insd = analysis['insider_score']
             
-            c4.metric("ATR Stop", f"${p_dat['ATR Stop']:.2f}")
-            c5.progress(min(1.0, max(0.0, analysis['composite_score'] if 'composite_score' in analysis else analysis['sentiment_score']/10)), text=f"AI Score: {analysis.get('composite_score', analysis['sentiment_score']):.1f}/10")
+            insight = []
+            if sent > 7: insight.append("News sentiment is very bullish.")
+            elif sent < 4: insight.append("News sentiment is bearish.")
             
+            if tech > 8: insight.append("Technicals show strong momentum.")
+            elif analysis['technical_data']['rsi'] > 75: insight.append("Technicals suggest overbought conditions (RSI > 75).")
+            
+            if insd > 6: insight.append("Insiders have been buying.")
+            elif insd < 4: insight.append("Insiders have been selling.")
+            
+            final_insight = " ".join(insight) if insight else "Signals are currently mixed/neutral."
+            
+            st.info(f"🤖 **AI Insight:** {final_insight} Recommended action: **{p_dat['Action']}** ({p_dat['Reason']})")
+
             # Expander for 5-Factor Evidence
             with st.expander(f"🔍 5-Factor Analysis & Evidence for {ticker}"):
                 sc1, sc2, sc3, sc4, sc5 = st.columns(5)
