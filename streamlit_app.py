@@ -399,11 +399,12 @@ if analyze_btn or auto_select_btn or "analyses" in st.session_state:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ─── Tabs ─────────────────────────────────────────────────────────────
-    tab1, tab2, tab3, tab4 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
         "📋 Screener & Rankings",
         "📰 Sentiment Analysis",
         "📈 Technical Setup",
         "🏆 Final Picks",
+        "🛡️ Risk Monitor",
     ])
 
     # ─── TAB 1: Screener ──────────────────────────────────────────────────
@@ -777,6 +778,58 @@ if analyze_btn or auto_select_btn or "analyses" in st.session_state:
         st.success(f"✅ **{top_n} Revolution picks selected!** "
                    f"Top choice: **{top_picks_df.iloc[0]['Ticker']}** "
                    f"with composite score **{top_picks_df.iloc[0]['Composite']:.1f}/10**")
+
+    # ─── TAB 5: Risk Monitor ──────────────────────────────────────────────
+    with tab5:
+        st.markdown("### 🛡️ ATR Strategy Monitor")
+        st.markdown("Real-time risk management levels based on volatility (14-day ATR).")
+
+        # Build Risk DataFrame
+        risk_data = []
+        for a in analyses:
+            vol = a["volatility_data"]
+            if vol["atr"] > 0:
+                risk_data.append({
+                    "Ticker": a["ticker"],
+                    "Price": vol["price"],
+                    "ATR ($)": vol["atr"],
+                    "🛑 Stop Loss": vol["stop_atr"],
+                    "🎯 Take Profit": vol["profit_atr"],
+                    "Risk %": round((vol["price"] - vol["stop_atr"]) / vol["price"] * 100, 2),
+                    "Reward %": round((vol["profit_atr"] - vol["price"]) / vol["price"] * 100, 2),
+                    "R-Ratio": "1 : 2.0"
+                })
+        
+        risk_df = pd.DataFrame(risk_data)
+        
+        if not risk_df.empty:
+            # Sort by Ticker or Risk %? Let's sort by Ticker for monitoring
+            risk_df = risk_df.sort_values("Ticker")
+
+            st.dataframe(
+                risk_df,
+                use_container_width=True,
+                height=min(500, 40 * len(risk_df) + 40),
+                column_config={
+                    "Price": st.column_config.NumberColumn(format="$%.2f"),
+                    "ATR ($)": st.column_config.NumberColumn(format="$%.2f"),
+                    "🛑 Stop Loss": st.column_config.NumberColumn(format="$%.2f"),
+                    "🎯 Take Profit": st.column_config.NumberColumn(format="$%.2f"),
+                    "Risk %": st.column_config.NumberColumn(format="%.2f%%"),
+                    "Reward %": st.column_config.NumberColumn(format="%.2f%%"),
+                },
+                hide_index=True
+            )
+
+            st.markdown("""
+            > **Strategy Note:** 
+            > * **Entry:** Current Price
+            > * **Stop Loss (2x ATR):** Exit if price drops below this level.
+            > * **Take Profit (4x ATR):** Exit if price reaches this target.
+            > * **Volatility:** Higher ATR means wider stops are needed to avoid noise.
+            """)
+        else:
+            st.info("No volatility data available. Run analysis first.")
 
 else:
     # Landing state
