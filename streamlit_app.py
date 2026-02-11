@@ -908,17 +908,18 @@ if page == "Dashboard":
 elif page == "💼 Portfolio Monitor":
     st.markdown("## 💼 Portfolio Monitor & Action Center")
     
-    # Check if we have portfolio analyses in session, otherwise run them
+    # 1. Load Holdings & Define tickers (Fixes NameError)
+    try:
+        from portfolio_config import PORTFOLIO_HOLDINGS
+    except ImportError:
+        st.error("Configuration file not found.")
+        st.stop()
+        
+    pf_tickers = [p["Ticker"] for p in PORTFOLIO_HOLDINGS]
+
+    # 2. Run Analysis if needed
     if "portfolio_analyses" not in st.session_state:
-        # Avoid import error if logic was triggered before sidebar loaded
-        try:
-            from portfolio_config import PORTFOLIO_HOLDINGS
-        except:
-            st.error("Restarting config...")
-            st.stop()
-            
         st.info("🔄 Running live analysis on your portfolio...")
-        pf_tickers = [p["Ticker"] for p in PORTFOLIO_HOLDINGS]
         
         pf_analyses = []
         progress = st.progress(0, text="Analyzing portfolio...")
@@ -931,7 +932,6 @@ elif page == "💼 Portfolio Monitor":
         st.session_state["portfolio_analyses"] = pf_analyses
         st.rerun()
 
-    from portfolio_config import PORTFOLIO_HOLDINGS
     pf_analyses = st.session_state["portfolio_analyses"]
     
     # ─── Portfolio Metrics & Signals ──────────────────────────────────────────
@@ -950,7 +950,6 @@ elif page == "💼 Portfolio Monitor":
             vol = analysis["volatility_data"]
             tech = analysis["technical_data"]
             sentiment_score = analysis["sentiment_score"]
-            composite_score = analysis.get("composite_score", sentiment_score) # Fallback if not fully scored yet
             
             # P&L
             mkt_val = curr_price * holding["Qty"]
@@ -960,23 +959,13 @@ elif page == "💼 Portfolio Monitor":
             unrealized_pl = mkt_val - cost_val
             unrealized_pct = (unrealized_pl / cost_val) * 100
             
-            # ATR Levels relative to ENTRY COST (Conservative Action) 
-            # Or Current Price? ATR Trailing Stop usually follows High.
-            # Strategy says: 2x ATR Stop. But from where? 
-            # Let's calculate Stop from CURRENT price for Trailing, 
-            # OR from Cost for Hard Stop.
-            # Let's suggest TRAILING STOP: Current Price - 2*ATR
+            # ATR Levels
             trailing_stop = curr_price - (2 * vol["atr"])
+            hard_stop = holding["Avg_Cost"] - (2 * vol["atr"])
             
             # Action Logic
             action = "HOLD"
             reason = "Stable"
-            
-            # 1. Stop Loss Logic
-            # If Price moves below Avg Cost - 2ATRs (Hard Stop violation) 
-            # OR if we want to lock profits
-            
-            hard_stop = holding["Avg_Cost"] - (2 * vol["atr"])
             
             if curr_price < hard_stop:
                 action = "🛑 STOP LOSS"
@@ -990,6 +979,9 @@ elif page == "💼 Portfolio Monitor":
             elif sentiment_score > 7.5 and tech["signal"] == "Bullish":
                 action = "🟢 ADD"
                 reason = "High Sentiment + Bullish Tech"
+            elif curr_price < trailing_stop:
+                 action = "⚠️ WATCH"
+                 reason = "Below Trailing Stop"
             
             pf_data.append({
                 "Ticker": ticker,
@@ -1001,15 +993,15 @@ elif page == "💼 Portfolio Monitor":
                 "ATR Stop": trailing_stop,
                 "Action": action,
                 "Reason": reason,
-                "Score": sentiment_score # Using Sentiment as proxy for quick view
+                "Score": sentiment_score
             })
 
-    # Portfolio Summary
+    # Portfolio Summary Headers
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Total Value", f"${total_val:,.2f}", delta=f"${total_val-total_cost:,.2f}")
     with col2:
-        tot_ret = ((total_val - total_cost) / total_cost) * 100
+        tot_ret = ((total_val - total_cost) / total_cost) * 100 if total_cost > 0 else 0
         st.metric("Total Return", f"{tot_ret:.2f}%")
     with col3:
         st.metric("Holdings", len(pf_data))
@@ -1017,36 +1009,94 @@ elif page == "💼 Portfolio Monitor":
     # Portfolio Table
     st.markdown("### 📊 Holdings Status")
     
-    pf_df = pd.DataFrame(pf_data)
-    
-    st.dataframe(
-        pf_df,
-        use_container_width=True,
-        column_config={
-            "Price": st.column_config.NumberColumn(format="$%.2f"),
-            "Avg Cost": st.column_config.NumberColumn(format="$%.2f"),
-            "P&L ($)": st.column_config.NumberColumn(format="$%.2f"),
-            "P&L %": st.column_config.NumberColumn(format="%.2f%%"),
-            "ATR Stop": st.column_config.NumberColumn(format="$%.2f", help="Trailing Stop Recommendation"),
-            "Score": st.column_config.ProgressColumn("Sentiment", min_value=0, max_value=10, format="%.1f"),
-        },
-        hide_index=True
-    )
+    # Iterate through holdings to display detailed cards instead of just a table
+    # This allows for the "Evidence" requested
+    for holding in PORTFOLIO_HOLDINGS:
+        ticker = holding["Ticker"]
+        analysis = next((a for a in pf_analyses if a["ticker"] == ticker), None)
+        p_dat = next((d for d in pf_data if d["Ticker"] == ticker), None)
+        
+        if not analysis or not p_dat: continue
+        
+        # Create a card for each stock
+        with st.container():
+            # Card Header
+            c1, c2, c3, c4, c5 = st.columns([1, 1, 1, 1, 1.5])
+            c1.markdown(f"### {ticker}")
+            c2.metric("Price", f"${p_dat['Price']:.2f}", f"{p_dat['P&L %']:.2f}%")
+            
+            # Action Badge
+            act_color = "#8888aa"
+            if "STOP" in p_dat["Action"]: act_color = "#ff4757"
+            elif "ADD" in p_dat["Action"]: act_color = "#00d4aa"
+            elif "TAKE" in p_dat["Action"]: act_color = "#ffa502"
+            
+            c3.markdown(f"""
+            <div style="background-color:{act_color}; color:white; padding:5px 10px; border-radius:5px; text-align:center; font-weight:bold;">
+                {p_dat['Action']}
+            </div>
+            """, unsafe_allow_html=True)
+            
+            c4.metric("ATR Stop", f"${p_dat['ATR Stop']:.2f}")
+            c5.progress(min(1.0, max(0.0, analysis['composite_score'] if 'composite_score' in analysis else analysis['sentiment_score']/10)), text=f"AI Score: {analysis.get('composite_score', analysis['sentiment_score']):.1f}/10")
+            
+            # Expander for 5-Factor Evidence
+            with st.expander(f"🔍 5-Factor Analysis & Evidence for {ticker}"):
+                sc1, sc2, sc3, sc4, sc5 = st.columns(5)
+                sc1.metric("📰 Sentiment (30%)", f"{analysis['sentiment_score']:.1f}")
+                sc2.metric("🎯 Catalyst (25%)", f"{analysis['catalyst_score']:.1f}")
+                sc3.metric("👤 Insider (15%)", f"{analysis['insider_score']:.1f}")
+                sc4.metric("📊 Options (15%)", f"{analysis['options_score']:.1f}")
+                sc5.metric("📈 Technical (15%)", f"{analysis['technical_score']:.1f}")
+                
+                st.markdown("---")
+                e1, e2 = st.columns(2)
+                
+                with e1:
+                    st.markdown("**📰 Top Headlines (Sentiment Evidence)**")
+                    headlines = analysis["sentiment_data"]["headlines"]
+                    if headlines:
+                        for h in headlines[:3]:
+                            s_icon = "🟢" if h['sentiment'] > 0 else ("🔴" if h['sentiment'] < 0 else "⚪")
+                            st.markdown(f"- {s_icon} {h['headline']}")
+                    else:
+                        st.write("No recent headlines found.")
+                        
+                    st.markdown("**📈 Technical Signals**")
+                    tech = analysis["technical_data"]
+                    st.write(f"- **RSI:** {tech['rsi']} ({'Overbought' if tech['rsi']>70 else 'Neutral' if tech['rsi']>30 else 'Oversold'})")
+                    st.write(f"- **SMA50:** {'Above (Bullish)' if tech['above_sma50'] else 'Below (Bearish)'}")
+                
+                with e2:
+                    st.markdown("**👤 Insider Activity (Evidence)**")
+                    ins = analysis["insider_data"]
+                    st.write(f"- **Net Activity:** {ins.get('net_activity', 'Neutral')}")
+                    # Show transactions if available (from new data_engine)
+                    txs = ins.get("recent_transactions", [])
+                    if txs:
+                        st.table(pd.DataFrame(txs)[["date", "name", "type", "shares"]])
+                    else:
+                        st.write(f"- **Ownership Change:** {ins.get('insider_trans', 'N/A')}")
+                        st.caption("(Detailed transaction rows not available via public feed)")
+
+                    st.markdown("**🎯 Catalyst**")
+                    st.write(f"- **Next Earnings:** {analysis['earnings_date']}")
+            
+            st.markdown("---")
+
     
     # ─── Opportunity Finder ───────────────────────────────────────────────────
-    st.markdown("---")
     st.markdown("### 🧠 AI Recommendations (Upgrade Candidates)")
     
     if find_opps_btn:
         with st.spinner("🤖 Scanning market for superior candidates..."):
-            # 1. Run analysis on a subset of high-potential tickers (Config Universe)
             # Use data_engine.FULL_US_UNIVERSE
-            target_univ = FULL_US_UNIVERSE # imported from config
+            target_univ = FULL_US_UNIVERSE 
             
-            # Filter out existing portfolio
+            # Filter out existing portfolio using pf_tickers defined above
             candidates = [t for t in target_univ if t not in pf_tickers]
             
-            # Limit to top 20 for speed in this demo (or all if async)
+            # Limit scan for speed
             candidates = candidates[:30] 
             
             opp_analyses = []
@@ -1059,14 +1109,14 @@ elif page == "💼 Portfolio Monitor":
             # Rank them
             ranked_opps = rank_candidates(opp_analyses, DEFAULT_WEIGHTS)
             
-            # Find current lowest score in portfolio
-            # We need to score the portfolio first with the SAME weights
+            # Compare against weakest portfolio holding
+            # We need to score the portfolio first
             pf_scored = rank_candidates(pf_analyses, DEFAULT_WEIGHTS)
             lowest_pf_stock = pf_scored.iloc[-1]
             lowest_score = lowest_pf_stock["Composite"]
             
-            # Filter opportunities > lowest_score
-            better_opps = ranked_opps[ranked_opps["Composite"] > (lowest_score + 1.0)] # Must be significantly better
+            # Filter opportunities significantly better
+            better_opps = ranked_opps[ranked_opps["Composite"] > (lowest_score + 1.0)] 
             
             col_a, col_b = st.columns([2, 1])
             

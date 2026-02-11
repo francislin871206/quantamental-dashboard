@@ -124,24 +124,78 @@ def fetch_news_sentiment(ticker: str) -> dict:
 
 def fetch_insider_data(ticker: str) -> dict:
     """
-    Scrape FinViz insider trading data.
-    Returns summary of recent insider activity.
+    Fetch insider trading data using yfinance (primary) and FinViz scraping (fallback).
+    Returns summary of recent insider activity and a list of transactions.
     """
+    insider_data = {
+        "total_buys": 0,
+        "total_sells": 0,
+        "net_activity": "Neutral",
+        "recent_transactions": [],
+        "insider_trans": "N/A"
+    }
+
+    # 1. Try yfinance for detailed transactions
+    try:
+        stock = yf.Ticker(ticker)
+        # transactions is a DataFrame: [Shares, Value, Text, Sec Form, Date, Insider]
+        # or [Name, Position, URL, Text, Shares, Value, Date] depending on version
+        # Let's try .insider_transactions which usually returns a DataFrame index by Date?
+        # Actually .insider_purchases / .insider_transactions can be tricky. 
+        # API often changes. We'll try the standard property.
+        
+        # Note: yfinance often has .insider_transactions or .institutional_holders
+        # Let's use a generic try block
+        
+        txs = stock.insider_transactions
+        if txs is not None and not txs.empty:
+            # Sort by Date descending (index usually)
+            txs = txs.sort_index(ascending=False).head(5)
+            
+            for index, row in txs.iterrows():
+                # Columns vary: 'Shares', 'Value', 'Text', 'Insider', 'Position'?
+                # Standard yfinance cols: "Shares", "Value", "Text", "Start Date", "Ownership", "Position", "Transaction"
+                
+                # Check column existence to be safe
+                shares = row.get("Shares", 0)
+                value = row.get("Value", 0)
+                insider = row.get("Insider", "Unknown")
+                position = row.get("Position", "")
+                text = row.get("Text", "") # Description like "Sale at price..."
+                
+                # Determine type
+                trans_type = "Sale" if "Sale" in text or shares < 0 else "Buy"
+                if "Sale" in text: insider_data["total_sells"] += 1
+                elif "Purchase" in text or "Buy" in text: insider_data["total_buys"] += 1
+                
+                insider_data["recent_transactions"].append({
+                    "date": index.strftime("%Y-%m-%d") if pd.notna(index) else "N/A",
+                    "name": insider,
+                    "position": position,
+                    "type": trans_type,
+                    "shares": shares,
+                    "value": value
+                })
+            
+            # Determine Net Activity from recent sample
+            if insider_data["total_buys"] > insider_data["total_sells"]:
+                insider_data["net_activity"] = "Buying"
+            elif insider_data["total_sells"] > insider_data["total_buys"]:
+                insider_data["net_activity"] = "Selling"
+                
+            return insider_data
+
+    except Exception as e:
+        # Fallback to FinViz if yf fails
+        pass
+
+    # 2. Fallback: Scrape FinViz
     try:
         url = f"https://finviz.com/quote.ashx?t={ticker}&ty=c&p=d&b=1"
         resp = requests.get(url, headers=HEADERS, timeout=10)
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Look for insider trading table
-        tables = soup.find_all("table", class_="body-table")
-        insider_data = {
-            "total_buys": 0,
-            "total_sells": 0,
-            "net_activity": "Neutral",
-            "recent_transactions": [],
-        }
-
-        # Try to parse insider ownership from the snapshot table
+        # Snapshot table for ownership
         snapshot = soup.find_all("table", class_="snapshot-table2")
         if snapshot:
             for table in snapshot:
@@ -150,8 +204,6 @@ def fetch_insider_data(ticker: str) -> dict:
                     cells = row.find_all("td")
                     for i, cell in enumerate(cells):
                         text = cell.get_text(strip=True)
-                        if "Insider Own" in text and i + 1 < len(cells):
-                            insider_data["insider_ownership"] = cells[i + 1].get_text(strip=True)
                         if "Insider Trans" in text and i + 1 < len(cells):
                             trans_text = cells[i + 1].get_text(strip=True)
                             insider_data["insider_trans"] = trans_text
@@ -165,11 +217,10 @@ def fetch_insider_data(ticker: str) -> dict:
                                     insider_data["total_sells"] = 1
                             except ValueError:
                                 pass
-
+                                
         return insider_data
     except Exception:
-        return {"total_buys": 0, "total_sells": 0, "net_activity": "Neutral",
-                "recent_transactions": []}
+        return insider_data
 
 
 # ─── Volatility & Risk Metrics ───────────────────────────────────────────────
