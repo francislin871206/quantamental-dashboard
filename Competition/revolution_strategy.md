@@ -77,12 +77,27 @@ Step 5: Select Top 3
 
 ---
 
-## 6. Risk Guardrails
+## 6. Scientific Risk Management (Short-Term Focus)
 
-- **Diversification:** No more than 2 stocks from the same sector
-- **Liquidity:** Minimum average daily volume > 500K shares
-- **Stop-Loss:** Mental stop at -8% from entry
-- **Correlation Check:** Ensure picks are not highly correlated (ρ < 0.6)
+Instead of generic annual volatility, we use short-term metrics tailored for a 3-week competition.
+
+### A. ATR Method (Primary System)
+Uses **Average True Range (14-day)** to capture daily price noise.
+*   **Stop Loss:** $2.0 \times ATR$ (Allows for normal daily fluctuations)
+*   **Take Profit:** $4.0 \times ATR$ (Targets significant trend extension)
+*   **Risk/Reward Ratio:** 1:2
+
+### B. Statistical Method ($\sigma_{15}$)
+Projects past 60-day volatility into a 15-day (3-week) expected range.
+*   $\sigma_{daily}$ = Standard Deviation of daily returns (last 60 days)
+*   $\sigma_{15}$ = $\sigma_{daily} \times \sqrt{15}$
+*   **Stop Limit:** $-1.0 \times \sigma_{15}$ (Statistical breakdown level)
+*   **Profit Target:** $+1.5 \times \sigma_{15}$ (Upper band of expected move)
+
+### C. Portfolio Constraints
+- **Diversification:** Max 2 stocks per sector
+- **Liquidity:** Avg Volume > 500K shares
+- **Correlation:** Portfolio average correlation $\rho < 0.6$
 
 ---
 

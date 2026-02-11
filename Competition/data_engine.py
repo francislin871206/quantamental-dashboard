@@ -172,6 +172,58 @@ def fetch_insider_data(ticker: str) -> dict:
                 "recent_transactions": []}
 
 
+# ─── Volatility & Risk Metrics ───────────────────────────────────────────────
+
+def compute_volatility_metrics(df: pd.DataFrame) -> dict:
+    """
+    Compute ATR (Average True Range) and Statistical Volatility (Sigma).
+    Returns dict with raw values and recommended stop/profit levels.
+    """
+    if df.empty or len(df) < 60:
+        return {
+            "atr": 0, "sigma_daily_pct": 0, "sigma_15_pct": 0,
+            "stop_atr": 0, "profit_atr": 0,
+            "stop_stat": 0, "profit_stat": 0
+        }
+
+    # 1. Calculate ATR (14-day)
+    high_low = df["High"] - df["Low"]
+    high_close = (df["High"] - df["Close"].shift()).abs()
+    low_close = (df["Low"] - df["Close"].shift()).abs()
+    
+    ranges = pd.concat([high_low, high_close, low_close], axis=1)
+    true_range = ranges.max(axis=1)
+    atr = true_range.rolling(14).mean().iloc[-1]
+
+    # 2. Calculate Statistical Volatility (60-day window)
+    daily_returns = df["Close"].pct_change()
+    sigma_daily = daily_returns.tail(60).std()
+    sigma_15 = sigma_daily * np.sqrt(15)  # Projected 15-day volatility
+
+    current_price = df["Close"].iloc[-1]
+
+    # 3. Method A: ATR Targets (Contest Version: 2x Stop, 4x Profit)
+    stop_atr = current_price - (2.0 * atr)
+    profit_atr = current_price + (4.0 * atr)
+
+    # 4. Method B: Statistical Targets (-1x Sigma15, +1.5x Sigma15)
+    stop_stat = current_price * (1 - sigma_15)
+    profit_stat = current_price * (1 + (1.5 * sigma_15))
+
+    return {
+        "atr": round(atr, 2),
+        "sigma_daily_pct": round(sigma_daily * 100, 2),
+        "sigma_15_pct": round(sigma_15 * 100, 2),
+        "price": round(current_price, 2),
+        # ATR Levels
+        "stop_atr": round(stop_atr, 2),
+        "profit_atr": round(profit_atr, 2),
+        # Stat Levels
+        "stop_stat": round(stop_stat, 2),
+        "profit_stat": round(profit_stat, 2),
+    }
+
+
 # ─── Technical Analysis ──────────────────────────────────────────────────────
 
 def compute_technical_indicators(df: pd.DataFrame) -> dict:
@@ -317,6 +369,7 @@ def analyze_ticker(ticker: str) -> dict:
     sentiment = fetch_news_sentiment(ticker)
     insider = fetch_insider_data(ticker)
     technical = compute_technical_indicators(price_data)
+    volatility = compute_volatility_metrics(price_data)
     catalyst_score = compute_catalyst_score(info)
     options_score = compute_options_score(ticker)
 
@@ -351,6 +404,7 @@ def analyze_ticker(ticker: str) -> dict:
         "sentiment_data": sentiment,
         "insider_data": insider,
         "technical_data": technical,
+        "volatility_data": volatility,
         "price_data": price_data,
     }
 

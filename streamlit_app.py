@@ -701,6 +701,22 @@ if analyze_btn or auto_select_btn or "analyses" in st.session_state:
                     | 📊 Opt | **{row['Options']:.1f}** |
                     | 📈 Tech | **{row['Technical']:.1f}** |
                     """)
+
+                    # Volatility / Risk Section
+                    vol = matching[0]["volatility_data"]
+                    if vol["atr"] > 0:
+                        st.markdown(f"""
+                        <div style="background-color:rgba(108, 99, 255, 0.1); padding:10px; border-radius:8px; margin-top:10px;">
+                            <div style="font-size:0.85rem; color:#e8e8f0; font-weight:700; margin-bottom:5px;">🛡️ Trade Setup (ATR Method)</div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.8rem;">
+                                <span style="color:#ff4b4b;">🛑 Stop: ${vol['stop_atr']}</span>
+                                <span style="color:#00d4aa;">🎯 Target: ${vol['profit_atr']}</span>
+                            </div>
+                            <div style="font-size:0.75rem; color:#8888aa; margin-top:4px;">
+                                ATR: ${vol['atr']} • σ15: ±{vol['sigma_15_pct']}%
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
             
             st.markdown("<br>", unsafe_allow_html=True)
 
