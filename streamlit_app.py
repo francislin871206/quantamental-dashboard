@@ -916,6 +916,18 @@ if page == "Dashboard":
 
 elif page == "💼 Portfolio Monitor":
     st.markdown("## 💼 Portfolio Monitor & Action Center")
+
+    # Refresh Button & Timestamp
+    c_head, c_btn = st.columns([4, 1])
+    with c_head:
+        st.caption(f"Live Market Data • Last Updated: {datetime.now().strftime('%H:%M:%S')}")
+    with c_btn:
+        if st.button("🔄 Refresh Data", type="primary", use_container_width=True):
+            st.cache_data.clear()
+            for key in ['portfolio_analyses', 'benchmark_data']:
+                if key in st.session_state:
+                    del st.session_state[key]
+            st.rerun()
     
     # 1. Load Holdings & Define tickers (Fixes NameError)
     try:
