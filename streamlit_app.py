@@ -1092,7 +1092,7 @@ elif page == "💼 Portfolio Monitor":
     
     # 1. Fetch Benchmark Data (SPY) for Comparison
     if "benchmark_data" not in st.session_state:
-        status_text.text("Fetching market benchmark (SPY)...")
+        st.toast("Fetching market benchmark (SPY)...")
         st.session_state["benchmark_data"] = data_engine.fetch_benchmark_data("SPY", period="6mo")
     
     spy_df = st.session_state["benchmark_data"]
