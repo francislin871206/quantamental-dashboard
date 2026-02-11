@@ -16,17 +16,9 @@ import os
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from config import SECTOR_MAP, DEFAULT_WEIGHTS, COLORS, PLOTLY_TEMPLATE, FULL_US_UNIVERSE
-from data_engine import analyze_ticker, fetch_price_data, generate_market_summary
-from scoring import rank_candidates, get_top_picks, format_market_cap, compute_composite_score
-
-# ─── NLTK Setup (Prevent Cloud Crash) ────────────────────────────────────────
+# ─── NLTK Setup (MUST BE FIRST) ──────────────────────────────────────────────
+# Fix for Streamlit Cloud: Ensure NLTK corpora are downloaded before TextBlob is imported
 import nltk
-try:
-    nltk.classes
-except AttributeError:
-    pass  # NLTK not loaded properly?
-
 try:
     nltk.data.find('tokenizers/punkt')
 except LookupError:
@@ -37,7 +29,12 @@ except LookupError:
     try:
         nltk.download('punkt_tab')
     except Exception:
-        pass # Older nltk might not need this
+        pass
+
+# ─── Custom Imports ──────────────────────────────────────────────────────────
+from config import SECTOR_MAP, DEFAULT_WEIGHTS, COLORS, PLOTLY_TEMPLATE, FULL_US_UNIVERSE
+from data_engine import analyze_ticker, fetch_price_data, generate_market_summary
+from scoring import rank_candidates, get_top_picks, format_market_cap, compute_composite_score
 
 
 # ─── Page Config ──────────────────────────────────────────────────────────────
