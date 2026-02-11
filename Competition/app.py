@@ -4,16 +4,23 @@ A Streamlit dashboard implementing the Sentiment + Catalyst Convergence strategy
 to identify 3 US stocks with explosive short-term growth potential.
 """
 
-import streamlit as st
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
 import sys
 import os
 
-print("🚀 STARTING APP.PY...", flush=True)
+print("🚀 STARTING APP.PY (TOP)...", flush=True)
+
+print("📦 Importing streamlit...", flush=True)
+import streamlit as st
+print("📦 Importing pandas...", flush=True)
+import pandas as pd
+print("📦 Importing numpy...", flush=True)
+import numpy as np
+print("📦 Importing plotly...", flush=True)
+import plotly.graph_objects as go
+import plotly.express as px
+from plotly.subplots import make_subplots
+
+print("🚀 STARTING APP.PY (AFTER IMPORTS)...", flush=True)
 
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
