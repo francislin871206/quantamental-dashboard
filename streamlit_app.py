@@ -789,15 +789,24 @@ if analyze_btn or auto_select_btn or "analyses" in st.session_state:
         for a in analyses:
             vol = a["volatility_data"]
             if vol["atr"] > 0:
+                # Safety Check: Is ATR stop wider than statistical noise?
+                stop_dist_pct = (vol["price"] - vol["stop_atr"]) / vol["price"]
+                sigma_15 = vol["sigma_15_pct"] / 100
+                
+                # If Stop Distance > Sigma15, it's outside normal noise -> Safe
+                # If Stop Distance < Sigma15, it's inside normal noise -> Tight
+                is_safe = stop_dist_pct > sigma_15
+                safety_icon = "✅ Optimal" if is_safe else "⚠️ Tight"
+                
                 risk_data.append({
                     "Ticker": a["ticker"],
                     "Price": vol["price"],
                     "ATR ($)": vol["atr"],
-                    "🛑 Stop Loss": vol["stop_atr"],
-                    "🎯 Take Profit": vol["profit_atr"],
-                    "Risk %": round((vol["price"] - vol["stop_atr"]) / vol["price"] * 100, 2),
-                    "Reward %": round((vol["profit_atr"] - vol["price"]) / vol["price"] * 100, 2),
-                    "R-Ratio": "1 : 2.0"
+                    "🛑 Stop (ATR)": vol["stop_atr"],
+                    "Safety": safety_icon, 
+                    "🎯 Target (ATR)": vol["profit_atr"],
+                    "Reward/Risk": "2.0x",
+                    "Sigma15": f"±{vol['sigma_15_pct']}%"
                 })
         
         risk_df = pd.DataFrame(risk_data)
@@ -813,20 +822,16 @@ if analyze_btn or auto_select_btn or "analyses" in st.session_state:
                 column_config={
                     "Price": st.column_config.NumberColumn(format="$%.2f"),
                     "ATR ($)": st.column_config.NumberColumn(format="$%.2f"),
-                    "🛑 Stop Loss": st.column_config.NumberColumn(format="$%.2f"),
-                    "🎯 Take Profit": st.column_config.NumberColumn(format="$%.2f"),
-                    "Risk %": st.column_config.NumberColumn(format="%.2f%%"),
-                    "Reward %": st.column_config.NumberColumn(format="%.2f%%"),
+                    "🛑 Stop (ATR)": st.column_config.NumberColumn(format="$%.2f"),
+                    "🎯 Target (ATR)": st.column_config.NumberColumn(format="$%.2f"),
                 },
                 hide_index=True
             )
 
             st.markdown("""
-            > **Strategy Note:** 
-            > * **Entry:** Current Price
-            > * **Stop Loss (2x ATR):** Exit if price drops below this level.
-            > * **Take Profit (4x ATR):** Exit if price reaches this target.
-            > * **Volatility:** Higher ATR means wider stops are needed to avoid noise.
+            > **🛡️ Stop Loss Decision Guide:**
+            > * **✅ Optimal:** The ATR stop is **wider** than the 3-week statistical noise (Sigma15). This is a statistically sound stop.
+            > * **⚠️ Tight:** The ATR stop is **inside** the expected volatility noise. consider placing your stop slightly wider (e.g., at `-1.0 x Sigma15`).
             """)
         else:
             st.info("No volatility data available. Run analysis first.")
