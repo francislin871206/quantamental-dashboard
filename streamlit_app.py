@@ -1090,8 +1090,14 @@ elif page == "💼 Portfolio Monitor":
     # Portfolio Table
     st.markdown("### 📊 Holdings Status")
     
-    # Iterate through holdings to display detailed cards instead of just a table
-    # This allows for the "Evidence" requested
+    # 1. Fetch Benchmark Data (SPY) for Comparison
+    if "benchmark_data" not in st.session_state:
+        status_text.text("Fetching market benchmark (SPY)...")
+        st.session_state["benchmark_data"] = data_engine.fetch_benchmark_data("SPY", period="6mo")
+    
+    spy_df = st.session_state["benchmark_data"]
+
+    # Iterate through holdings to display detailed cards
     for holding in PORTFOLIO_HOLDINGS:
         ticker = holding["Ticker"]
         analysis = next((a for a in pf_analyses if a["ticker"] == ticker), None)
@@ -1099,94 +1105,129 @@ elif page == "💼 Portfolio Monitor":
         
         if not analysis or not p_dat: continue
         
-        # Create a card for each stock
+        # Create a container for each stock card
         with st.container():
-            # Card Layout: [Header/Metrics] | [Sparkline Chart]
-            m1, m2 = st.columns([1.5, 1])
+            st.markdown(f"### {ticker} - {analysis['name']}")
+            
+            # ─── 1. Price Chart (Top, Full Width) ──────────────────────────────────
+            hist_df = analysis.get("price_data", pd.DataFrame())
+            if not hist_df.empty and not spy_df.empty:
+                # Merge and Normalize
+                # Limit to last 60 days for cleaner view, or user selectable period? Default 6 months in fetch
+                # Let's show last 3 months ~ 60 trading days
+                window = 60
+                stock_recent = hist_df.tail(window).copy()
+                spy_recent = spy_df.tail(window).copy()
+                
+                # Normalize to % change from start
+                if not stock_recent.empty:
+                    start_p = stock_recent["Close"].iloc[0]
+                    stock_recent["Pct"] = ((stock_recent["Close"] - start_p) / start_p) * 100
+                    
+                    # Align SPY dates
+                    common_dates = stock_recent.index.intersection(spy_recent.index)
+                    spy_aligned = spy_recent.loc[common_dates].copy()
+                    stock_aligned = stock_recent.loc[common_dates].copy()
+                    
+                    if not spy_aligned.empty:
+                        spy_start = spy_aligned["Close"].iloc[0]
+                        spy_aligned["Pct"] = ((spy_aligned["Close"] - spy_start) / spy_start) * 100
+                        
+                        # Create Comparison Chart
+                        fig_chart = go.Figure()
+                        fig_chart.add_trace(go.Scatter(
+                            x=stock_aligned.index, y=stock_aligned["Pct"],
+                            mode='lines', name=ticker,
+                            line=dict(color=COLORS['accent_2'], width=2)
+                        ))
+                        fig_chart.add_trace(go.Scatter(
+                            x=spy_aligned.index, y=spy_aligned["Pct"],
+                            mode='lines', name='SPY (Benchmark)',
+                            line=dict(color='#8888aa', width=1, dash='dot')
+                        ))
+                        
+                        fig_chart.update_layout(
+                            title=f"Performance vs Market (Last {window} Days)",
+                            template="plotly_dark",
+                            paper_bgcolor="rgba(0,0,0,0)",
+                            plot_bgcolor="rgba(0,0,0,0)",
+                            height=300,
+                            xaxis=dict(showgrid=False),
+                            yaxis=dict(showgrid=True, gridcolor="#333333", ticksuffix="%"),
+                            margin=dict(l=0, r=0, t=30, b=0),
+                            legend=dict(orientation="h", y=1, x=0)
+                        )
+                        st.plotly_chart(fig_chart, use_container_width=True)
+            
+            # ─── 2. Metrics & Insight (Bottom Row) ────────────────────────────────
+            m1, m2 = st.columns([1, 1.5])
             
             with m1:
-                # Top Row: Ticker & Price
-                c1, c2, c3 = st.columns([1, 1, 1])
-                c1.markdown(f"### {ticker}")
-                c2.metric("Price", f"${p_dat['Price']:.2f}", f"{p_dat['P&L %']:.2f}%")
+                # Key Metrics Grid
+                k1, k2 = st.columns(2)
+                k1.metric("Current Price", f"${p_dat['Price']:.2f}", f"{p_dat['P&L %']:.2f}% (All Time)")
+                k2.metric("ATR Trailing Stop", f"${p_dat['ATR Stop']:.2f}", delta=f"{p_dat['Price']-p_dat['ATR Stop']:.2f} cushion")
                 
-                # Action Badge
-                act_color = "#8888aa"
-                if "STOP" in p_dat["Action"]: act_color = "#ff4757"
-                elif "ADD" in p_dat["Action"]: act_color = "#00d4aa"
-                elif "TAKE" in p_dat["Action"]: act_color = "#ffa502"
-                elif "REDUCE" in p_dat["Action"]: act_color = "#ff9f43"
-                
-                c3.markdown(f"""
-                <div style="background-color:{act_color}; color:white; padding:5px 10px; border-radius:5px; text-align:center; font-weight:bold;">
-                    {p_dat['Action']}
+                # Action Badge with dynamic styling
+                act = p_dat['Action']
+                bg_col = "#2ecc71" if "ADD" in act else "#e74c3c" if "STOP" in act else "#f1c40f" if "TAKE" in act else "#3498db"
+                st.markdown(f"""
+                <div style="background-color:{bg_col}; padding:8px; border-radius:5px; text-align:center; font-weight:bold; color:white; margin-top:10px;">
+                    ACTION: {act}
                 </div>
                 """, unsafe_allow_html=True)
-                
-                # Second Row: Stats
-                d1, d2 = st.columns(2)
-                d1.metric("ATR Stop", f"${p_dat['ATR Stop']:.2f}", help="Trailing Stop Level")
-                score_val = analysis.get('composite_score', analysis['sentiment_score'])
-                
-                # Score with interpretation tooltip
-                score_help = "0-3: Bearish/Neutral | 4-6: Hold | 7-10: Bullish. Based on Sentiment, Tech, Insider, Options."
-                d2.progress(min(1.0, max(0.0, score_val/10)), text=f"AI Score: {score_val:.1f}/10")
-                d2.caption(score_help)
-            
-            with m2:
-                # Sparkline Chart
-                hist_df = analysis.get("price_data", pd.DataFrame())
-                if not hist_df.empty:
-                    # Filter last 30 days
-                    recent_df = hist_df.tail(30).reset_index()
-                    # Rename for chart
-                    fig_spark = px.line(recent_df, x=recent_df.columns[0], y="Close")
-                    fig_spark.update_layout(
-                        template="plotly_dark",
-                        margin=dict(l=0, r=0, t=0, b=0),
-                        height=100,
-                        paper_bgcolor="rgba(0,0,0,0)",
-                        plot_bgcolor="rgba(0,0,0,0)",
-                        xaxis=dict(visible=False),
-                        yaxis=dict(visible=False),
-                        showlegend=False
-                    )
-                    # Color line based on trend
-                    start_p = recent_df.iloc[0]["Close"]
-                    end_p = recent_df.iloc[-1]["Close"]
-                    line_color = COLORS["positive"] if end_p >= start_p else COLORS["negative"]
-                    fig_spark.update_traces(line=dict(color=line_color, width=2))
-                    
-                    st.plotly_chart(fig_spark, use_container_width=True, config={"displayModeBar": False})
-                else:
-                    st.caption("No price history")
 
-            # AI Interpretation (Rule-based)
-            sent = analysis['sentiment_score']
-            tech = analysis['technical_score']
-            insd = analysis['insider_score']
-            
-            insight = []
-            if sent > 7: insight.append("News sentiment is very bullish.")
-            elif sent < 4: insight.append("News sentiment is bearish.")
-            
-            if tech > 8: insight.append("Technicals show strong momentum.")
-            elif analysis['technical_data']['rsi'] > 75: insight.append("Technicals suggest overbought conditions (RSI > 75).")
-            
-            if insd > 6: insight.append("Insiders have been buying.")
-            elif insd < 4: insight.append("Insiders have been selling.")
-            
-            final_insight = " ".join(insight) if insight else "Signals are currently mixed/neutral."
-            
-            # Recommendation with specific quantity
-            rec_text = f"Recommended: **{p_dat['Action']}**"
-            if p_dat['RecQty'] != "No Action":
-                rec_text += f" — *{p_dat['RecQty']}*"
-            
-            st.info(f"🤖 **AI Insight:** {final_insight} {rec_text}")
+            with m2:
+                # Explainable AI Insight
+                sent = analysis['sentiment_score']
+                tech = analysis['technical_score']
+                insd = analysis['insider_score']
+                rsi = analysis['technical_data']['rsi']
+                
+                # Logic explanation
+                reasons = []
+                drivers = []
+                
+                if sent > 7.0: drivers.append(f"Strong Bullish Sentiment ({sent}/10)")
+                if tech > 7.0: drivers.append(f"Technical Uptrend ({tech}/10)")
+                if insd > 7.0: drivers.append(f"Insider Buying ({insd}/10)")
+                
+                negatives = []
+                if sent < 4.0: negatives.append(f"Weak Sentiment ({sent}/10)")
+                if rsi > 75: negatives.append(f"Overbought RSI ({rsi:.0f})")
+                if insd < 3.0: negatives.append(f"Insider Selling ({insd}/10)")
+                
+                explanation = ""
+                if drivers: explanation += f"**Drivers:** {' + '.join(drivers)} are pushing calculation higher. "
+                if negatives: explanation += f"**Risks:** However, {', '.join(negatives)} signals caution. "
+                
+                # Quantity Rationale
+                qty_logic = ""
+                if "TAKE PROFIT" in act:
+                    qty_logic = "Taking 1/3 profit is standard protocol when RSI hits overbought (>75) to lock in gains while riding the trend."
+                elif "STOP LOSS" in act:
+                    qty_logic = "Hard stop breached. Full exit required to preserve capital according to risk rules."
+                elif "REDUCE" in act:
+                    qty_logic = "Sentiment has soured. Trimming 20% reduces exposure to potential bad news while staying invested."
+                elif "ADD" in act:
+                    qty_logic = "All signals align. Scaling in with 10% size increases exposure to high-probability setup."
+                else: 
+                    qty_logic = "No critical thresholds breached. Hold full position."
+
+                # AI Score Bar
+                score_val = float(analysis.get('composite_score', sent))
+                st.progress(score_val/10, text=f"AI Composite Score: {score_val:.1f} / 10")
+                
+                st.info(f"""
+                🧠 **AI Analyst:** {explanation}
+                
+                📉 **Trade Rationale:** {qty_logic}
+                
+                👉 **Recommendation:** {p_dat['RecQty']}
+                """)
 
             # Expander for 5-Factor Evidence
-            with st.expander(f"🔍 5-Factor Analysis & Evidence for {ticker}"):
+            with st.expander(f"🔍 Deep Dive Evidence for {ticker}"):
                 sc1, sc2, sc3, sc4, sc5 = st.columns(5)
                 sc1.metric("📰 Sentiment (30%)", f"{analysis['sentiment_score']:.1f}")
                 sc2.metric("🎯 Catalyst (25%)", f"{analysis['catalyst_score']:.1f}")

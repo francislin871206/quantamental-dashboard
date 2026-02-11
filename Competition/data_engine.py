@@ -37,6 +37,11 @@ def fetch_price_data(ticker: str, period: str = "6mo") -> pd.DataFrame:
         return pd.DataFrame()
 
 
+def fetch_benchmark_data(ticker: str = "SPY", period: str = "6mo") -> pd.DataFrame:
+    """Fetch Benchmark (SPY) data for comparison."""
+    return fetch_price_data(ticker, period)
+
+
 def fetch_stock_info(ticker: str) -> dict:
     """Fetch basic stock info (market cap, P/E, sector, etc.)."""
     try:
