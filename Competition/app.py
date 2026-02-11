@@ -13,30 +13,47 @@ from plotly.subplots import make_subplots
 import sys
 import os
 
+print("🚀 STARTING APP.PY...", flush=True)
+
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+print(f"📂 Added to path: {sys.path[0]}", flush=True)
 
 # ─── NLTK Setup (MUST BE FIRST) ──────────────────────────────────────────────
-# Fix for Streamlit Cloud: Ensure NLTK corpora are downloaded before TextBlob is imported
+print("🔧 Initializing NLTK...", flush=True)
 import nltk
 try:
     nltk.data.find('tokenizers/punkt')
+    print("✅ Found punkt", flush=True)
 except LookupError:
+    print("⬇️ Downloading punkt...", flush=True)
     nltk.download('punkt')
 try:
     nltk.data.find('tokenizers/punkt_tab')
+    print("✅ Found punkt_tab", flush=True)
 except LookupError:
     try:
+        print("⬇️ Downloading punkt_tab...", flush=True)
         nltk.download('punkt_tab')
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"⚠️ Failed punkt_tab: {e}", flush=True)
+
+print("📦 Importing custom modules...", flush=True)
+
 
 # ─── Custom Imports ──────────────────────────────────────────────────────────
-from config import SECTOR_MAP, DEFAULT_WEIGHTS, COLORS, PLOTLY_TEMPLATE, FULL_US_UNIVERSE
-from data_engine import analyze_ticker, fetch_price_data, generate_market_summary
-from scoring import rank_candidates, get_top_picks, format_market_cap, compute_composite_score
+try:
+    from config import SECTOR_MAP, DEFAULT_WEIGHTS, COLORS, PLOTLY_TEMPLATE, FULL_US_UNIVERSE
+    print("✅ Imported config", flush=True)
+    from data_engine import analyze_ticker, fetch_price_data, generate_market_summary
+    print("✅ Imported data_engine", flush=True)
+    from scoring import rank_candidates, get_top_picks, format_market_cap, compute_composite_score
+    print("✅ Imported scoring", flush=True)
+except Exception as e:
+    print(f"❌ IMPORT ERROR: {e}", flush=True)
+    raise e
 
-
+print("🎨 Setting page config...", flush=True)
 # ─── Page Config ──────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Revolution Stock Selector",
@@ -44,6 +61,8 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+print("✅ Page config set!", flush=True)
+
 
 # ─── Custom CSS ───────────────────────────────────────────────────────────────
 st.markdown("""
