@@ -962,22 +962,36 @@ elif page == "💼 Portfolio Monitor":
             trailing_stop = curr_price - (2 * vol["atr"])
             hard_stop = holding["Avg_Cost"] - (2 * vol["atr"])
             
-            # Action Logic
+            # Action Logic & Quantity Recommendation
             action = "HOLD"
             reason = "Stable"
+            rec_qty = 0
+            rec_desc = "No Action"
             
+            hard_stop = holding["Avg_Cost"] - (2 * vol["atr"])
+            
+            # 1. Stop Loss Logic (Highest Priority)
             if curr_price < hard_stop:
                 action = "🛑 STOP LOSS"
                 reason = "Price < Entry - 2ATR"
+                rec_qty = holding["Qty"]
+                rec_desc = f"Sell {rec_qty} shares (Exit Position)"
             elif sentiment_score < 4.0:
                 action = "🔻 REDUCE"
                 reason = "Sentiment Negative"
+                rec_qty = max(1, int(holding["Qty"] * 0.2))
+                rec_desc = f"Sell {rec_qty} shares (20% Trim)"
             elif tech["rsi"] > 75:
                 action = "💰 TAKE PROFIT"
                 reason = "RSI Overbought (>75)"
+                rec_qty = max(1, int(holding["Qty"] * 0.33))
+                rec_desc = f"Sell {rec_qty} shares (Lock 1/3 Profits)"
             elif sentiment_score > 7.5 and tech["signal"] == "Bullish":
                 action = "🟢 ADD"
                 reason = "High Sentiment + Bullish Tech"
+                # Suggest adding 10% position size
+                rec_qty = max(1, int(holding["Qty"] * 0.1))
+                rec_desc = f"Buy {rec_qty} shares (Scale in 10%)"
             elif curr_price < trailing_stop:
                  action = "⚠️ WATCH"
                  reason = "Below Trailing Stop"
@@ -996,7 +1010,8 @@ elif page == "💼 Portfolio Monitor":
                 "ATR Stop": trailing_stop,
                 "Action": action,
                 "Reason": reason,
-                "Score": sentiment_score
+                "Score": sentiment_score,
+                "RecQty": rec_desc
             })
 
     # Portfolio Summary Headers
@@ -1112,7 +1127,11 @@ elif page == "💼 Portfolio Monitor":
                 d1, d2 = st.columns(2)
                 d1.metric("ATR Stop", f"${p_dat['ATR Stop']:.2f}", help="Trailing Stop Level")
                 score_val = analysis.get('composite_score', analysis['sentiment_score'])
+                
+                # Score with interpretation tooltip
+                score_help = "0-3: Bearish/Neutral | 4-6: Hold | 7-10: Bullish. Based on Sentiment, Tech, Insider, Options."
                 d2.progress(min(1.0, max(0.0, score_val/10)), text=f"AI Score: {score_val:.1f}/10")
+                d2.caption(score_help)
             
             with m2:
                 # Sparkline Chart
@@ -1159,7 +1178,12 @@ elif page == "💼 Portfolio Monitor":
             
             final_insight = " ".join(insight) if insight else "Signals are currently mixed/neutral."
             
-            st.info(f"🤖 **AI Insight:** {final_insight} Recommended action: **{p_dat['Action']}** ({p_dat['Reason']})")
+            # Recommendation with specific quantity
+            rec_text = f"Recommended: **{p_dat['Action']}**"
+            if p_dat['RecQty'] != "No Action":
+                rec_text += f" — *{p_dat['RecQty']}*"
+            
+            st.info(f"🤖 **AI Insight:** {final_insight} {rec_text}")
 
             # Expander for 5-Factor Evidence
             with st.expander(f"🔍 5-Factor Analysis & Evidence for {ticker}"):
