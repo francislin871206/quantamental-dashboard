@@ -957,7 +957,6 @@ elif page == "💼 Portfolio Monitor":
             total_val += mkt_val
             total_cost += cost_val
             unrealized_pl = mkt_val - cost_val
-            unrealized_pct = (unrealized_pl / cost_val) * 100
             
             # ATR Levels
             trailing_stop = curr_price - (2 * vol["atr"])
@@ -985,11 +984,15 @@ elif page == "💼 Portfolio Monitor":
             
             pf_data.append({
                 "Ticker": ticker,
+                "Type": holding["Type"],
+                "Sector": analysis["sector"],
                 "Qty": holding["Qty"],
                 "Avg Cost": holding["Avg_Cost"],
                 "Price": curr_price,
+                "Value ($)": mkt_val,
+                "Cost ($)": cost_val,
                 "P&L ($)": unrealized_pl,
-                "P&L %": unrealized_pct,
+                "P&L %": (unrealized_pl / cost_val) * 100,
                 "ATR Stop": trailing_stop,
                 "Action": action,
                 "Reason": reason,
@@ -997,14 +1000,77 @@ elif page == "💼 Portfolio Monitor":
             })
 
     # Portfolio Summary Headers
+    current_pl = total_val - total_cost
     col1, col2, col3 = st.columns(3)
     with col1:
-        st.metric("Total Value", f"${total_val:,.2f}", delta=f"${total_val-total_cost:,.2f}")
+        st.metric("Total Value", f"${total_val:,.2f}", delta=f"${current_pl:,.2f}")
     with col2:
         tot_ret = ((total_val - total_cost) / total_cost) * 100 if total_cost > 0 else 0
         st.metric("Total Return", f"{tot_ret:.2f}%")
     with col3:
         st.metric("Holdings", len(pf_data))
+
+    # ─── 📊 Visual Analytics Section ──────────────────────────────────────────
+    with st.expander("📊 Portfolio Analytics & Risk", expanded=True):
+        ac1, ac2 = st.columns(2)
+        
+        df_viz = pd.DataFrame(pf_data)
+        
+        if not df_viz.empty:
+            # 1. Asset Allocation (Evolution vs Revolution)
+            fig_alloc = px.pie(
+                df_viz, 
+                names="Type", 
+                values="Value ($)", 
+                title="Asset Allocation (Strategy)",
+                hole=0.4,
+                color="Type",
+                color_discrete_map={"Evolution": COLORS["accent_1"], "Revolution": COLORS["accent_2"]}
+            )
+            fig_alloc.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            ac1.plotly_chart(fig_alloc, use_container_width=True)
+            
+            # 2. Sector Exposure
+            fig_sect = px.pie(
+                df_viz, 
+                names="Sector", 
+                values="Value ($)", 
+                title="Sector Exposure",
+                hole=0.4,
+            )
+            fig_sect.update_layout(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            ac2.plotly_chart(fig_sect, use_container_width=True)
+
+    # ─── 🎛️ Dynamic Simulator ───────────────────────────────────────────────
+    st.markdown("### 🎛️ Rebalancing Simulator")
+    st.markdown("Test changes to your portfolio quantity below. See impact on total value instantly.")
+    
+    if not df_viz.empty:
+        # User Editor
+        edited_df = st.data_editor(
+            df_viz[["Ticker", "Type", "Qty", "Price", "Value ($)"]],
+            column_config={
+                "Qty": st.column_config.NumberColumn("Quantity (Edit Me)", min_value=0, step=1, required=True),
+                "Value ($)": st.column_config.NumberColumn("Current Value", format="$%.2f", disabled=True),
+                "Price": st.column_config.NumberColumn(format="$%.2f", disabled=True),
+            },
+            disabled=["Ticker", "Type", "Price", "Value ($)"],
+            use_container_width=True,
+            key="sim_editor"
+        )
+        
+        # Calculate Simulated Totals
+        sim_val = (edited_df["Qty"] * edited_df["Price"]).sum()
+        diff = sim_val - total_val
+        
+        sc1, sc2, sc3 = st.columns(3)
+        sc1.metric("Simulated Total", f"${sim_val:,.2f}")
+        sc2.metric("Change Impact", f"${diff:+,.2f}", delta_color="off")
+        
+        # Allocation Shift
+        sim_evo = edited_df[edited_df["Type"] == "Evolution"]["Qty"] * edited_df[edited_df["Type"] == "Evolution"]["Price"]
+        evo_pct = (sim_evo.sum() / sim_val * 100) if sim_val > 0 else 0
+        sc3.metric("New Evolution %", f"{evo_pct:.1f}%")
 
     # Portfolio Table
     st.markdown("### 📊 Holdings Status")
