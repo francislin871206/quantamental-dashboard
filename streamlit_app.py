@@ -391,36 +391,36 @@ if page == "Dashboard":
         # ─── Summary Metrics ─────────────────────────────────────────────────
         cols = st.columns(4)
         with cols[0]:
-            st.markdown(f\"\"\"
+            st.markdown(f"""
             <div class="score-card">
                 <div class="value">{len(analyses)}</div>
                 <div class="label">Stocks Analyzed</div>
             </div>
-            \"\"\", unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
         with cols[1]:
             avg_score = ranked_df["Composite"].mean()
-            st.markdown(f\"\"\"
+            st.markdown(f"""
             <div class="score-card">
                 <div class="value">{avg_score:.1f}</div>
                 <div class="label">Avg Composite Score</div>
             </div>
-            \"\"\", unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
         with cols[2]:
             top_score = ranked_df["Composite"].max()
-            st.markdown(f\"\"\"
+            st.markdown(f"""
             <div class="score-card">
                 <div class="value">{top_score:.1f}</div>
                 <div class="label">Top Score</div>
             </div>
-            \"\"\", unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
         with cols[3]:
             top_ticker = ranked_df.iloc[0]["Ticker"]
-            st.markdown(f\"\"\"
+            st.markdown(f"""
             <div class="score-card">
                 <div class="value">{top_ticker}</div>
                 <div class="label">Top Pick</div>
             </div>
-            \"\"\", unsafe_allow_html=True)
+            """, unsafe_allow_html=True)
 
         st.markdown("<br>", unsafe_allow_html=True)
 
@@ -710,7 +710,7 @@ if page == "Dashboard":
                     matching = [a for a in analyses if a["ticker"] == row["Ticker"]]
                     
                     with pick_cols[j]:
-                        st.markdown(f\"\"\"
+                        st.markdown(f"""
                         <div class="score-card">
                             <div class="value">{medal} {row['Ticker']}</div>
                             <div class="label">{row['Company'][:20]}</div>
@@ -720,9 +720,9 @@ if page == "Dashboard":
                             </div>
                             <div class="label">Composite Score</div>
                         </div>
-                        \"\"\", unsafe_allow_html=True)
+                        """, unsafe_allow_html=True)
 
-                        st.markdown(f\"\"\"
+                        st.markdown(f"""
                         | Factor | Score |
                         |--------|-------|
                         | 📰 Sent | **{row['Sentiment']:.1f}** |
@@ -730,13 +730,13 @@ if page == "Dashboard":
                         | 👤 Ins | **{row['Insider']:.1f}** |
                         | 📊 Opt | **{row['Options']:.1f}** |
                         | 📈 Tech | **{row['Technical']:.1f}** |
-                        \"\"\"
+                        """
                         )
 
                         # Volatility / Risk Section
                         vol = matching[0]["volatility_data"]
                         if vol["atr"] > 0:
-                            st.markdown(f\"\"\"
+                            st.markdown(f"""
                             <div style="background-color:rgba(108, 99, 255, 0.1); padding:10px; border-radius:8px; margin-top:10px;">
                                 <div style="font-size:0.85rem; color:#e8e8f0; font-weight:700; margin-bottom:5px;">🛡️ Trade Setup (ATR Method)</div>
                                 <div style="display:flex; justify-content:space-between; font-size:0.8rem;">
@@ -747,7 +747,7 @@ if page == "Dashboard":
                                     ATR: ${vol['atr']} • σ15: ±{vol['sigma_15_pct']}%
                                 </div>
                             </div>
-                            \"\"\", unsafe_allow_html=True)
+                            """, unsafe_allow_html=True)
                 
                 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -858,11 +858,11 @@ if page == "Dashboard":
                     hide_index=True
                 )
 
-                st.markdown(\"\"\"
+                st.markdown("""
                 > **🛡️ Stop Loss Decision Guide:**
                 > * **✅ Optimal:** The ATR stop is **wider** than the 3-week statistical noise (Sigma15). This is a statistically sound stop.
                 > * **⚠️ Tight:** The ATR stop is **inside** the expected volatility noise. consider placing your stop slightly wider (e.g., at `-1.0 x Sigma15`).
-                \"\"\")
+                """)
             else:
                 st.info("No volatility data available. Run analysis first.")
 
@@ -872,7 +872,7 @@ if page == "Dashboard":
 
         col_left, col_right = st.columns([2, 1])
         with col_left:
-            st.markdown(\"\"\"
+            st.markdown("""
             ### 🎯 How It Works
 
             1. **Select a sector** or add custom tickers in the sidebar
@@ -889,10 +889,10 @@ if page == "Dashboard":
             | 👤 Insider Buying | 15% | Net insider purchase activity |
             | 📊 Options Flow | 15% | Put/call ratio sentiment |
             | 📈 Technical Setup | 15% | SMA crossover, RSI, breakout |
-            \"\"\")
+            """)
 
         with col_right:
-            st.markdown(\"\"\"
+            st.markdown("""
             ### 🏷️ Preset Sectors
 
             - 🤖 **AI & Technology**
@@ -903,7 +903,7 @@ if page == "Dashboard":
 
             ### ⏱️ Timeline
             Designed for the **3-week** asset allocation competition.
-            \"\"\")
+            """)
 
 elif page == "💼 Portfolio Monitor":
     st.markdown("## 💼 Portfolio Monitor & Action Center")
@@ -1075,7 +1075,7 @@ elif page == "💼 Portfolio Monitor":
                     st.success(f"🔍 Found {len(better_opps)} stocks with stronger signals than your weakest holding (**{lowest_pf_stock['Ticker']}**: {lowest_score:.1f})")
                     
                     top_upgrade = better_opps.iloc[0]
-                    st.markdown(f\"\"\"
+                    st.markdown(f"""
                     <div style="padding:15px; border:1px solid #00d4aa; border-radius:10px; background:rgba(0,212,170,0.1)">
                         <h3 style="margin:0; color:#00d4aa">✨ Top Upgrade: {top_upgrade['Ticker']}</h3>
                         <p style="margin:5px 0 0 0; color:#e8e8f0">{top_upgrade['Company']}</p>
@@ -1086,7 +1086,7 @@ elif page == "💼 Portfolio Monitor":
                             <div>Tech: <strong>{top_upgrade['Technical']:.1f}</strong></div>
                         </div>
                     </div>
-                    \"\"\", unsafe_allow_html=True)
+                    """, unsafe_allow_html=True)
                     
                     st.markdown("#### All Candidates")
                     st.dataframe(
