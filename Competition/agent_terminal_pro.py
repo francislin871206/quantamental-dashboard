@@ -339,13 +339,7 @@ def render_terminal():
                 # Log structure: {time, agent, msg, output...}
                 agent_class = f"agent-{log['agent'].split()[0].lower()}" # agent-analyst
                 
-                log_html += f"""
-                <div class="term-line">
-                    <span class="term-time">[{datetime.now().strftime('%H:%M:%S')}]</span>
-                    <span class="term-agent {agent_class}">{log['agent']}:</span>
-                    {log.get('output', 'Processing...')}
-                </div>
-                """
+                log_html += f'<div class="term-line"><span class="term-time">[{datetime.now().strftime("%H:%M:%S")}]</span><span class="term-agent {agent_class}">{log["agent"]}:</span>{log.get("output", "Processing...")}</div>'
                 # If there are sub-details
                 if 'quotes' in log:
                     for q in log['quotes']:
