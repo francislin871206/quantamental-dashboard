@@ -255,7 +255,7 @@ with st.sidebar:
     st.markdown("## 🚀 Revolution Selector")
     
     # Navigation
-    page = st.radio("📍 Navigation", ["Dashboard", "💼 Portfolio Monitor"])
+    page = st.radio("📍 Navigation", ["Dashboard", "💼 Portfolio Monitor", "🤖 AI Agent Orchestrator"])
     st.markdown("---")
 
     if page == "Dashboard":
