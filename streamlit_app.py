@@ -255,7 +255,7 @@ with st.sidebar:
     st.markdown("## 🚀 Revolution Selector")
     
     # Navigation
-    page = st.radio("📍 Navigation", ["Dashboard", "💼 Portfolio Monitor", "🤖 AI Agent Orchestrator"])
+    page = st.radio("📍 Navigation", ["Dashboard", "💼 Portfolio Monitor", "🤖 AI Agent Orchestrator", "🚀 Agentic Terminal Pro"])
     st.markdown("---")
 
     if page == "Dashboard":
@@ -1580,3 +1580,13 @@ elif page == "🤖 AI Agent Orchestrator":
         log_html += '</div>'
         
         st.markdown(log_html, unsafe_allow_html=True)
+
+
+# ─── 🚀 Agentic Terminal Pro ─────────────────────────────────────────────────
+elif page == "🚀 Agentic Terminal Pro":
+    # Dynamic import to keep main app clean
+    try:
+        from agent_terminal_pro import render_terminal
+        render_terminal()
+    except ImportError:
+        st.error("⚠️ Module 'agent_terminal_pro' not found. Please ensure the file exists in the Competition directory.")
