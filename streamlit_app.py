@@ -246,6 +246,14 @@ st.markdown("""
         background: linear-gradient(135deg, #5a52e0, #7c4dff);
         box-shadow: 0 4px 20px rgba(108, 99, 255, 0.4);
     }
+    /* Fix for Disabled Buttons */
+    .stButton > button:disabled {
+        background: #333 !important;
+        color: #666 !important;
+        border: 1px solid #444 !important;
+        cursor: not-allowed !important;
+        box-shadow: none !important;
+    }
 </style>
 """, unsafe_allow_html=True)
 
