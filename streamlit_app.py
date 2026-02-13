@@ -1360,3 +1360,156 @@ elif page == "💼 Portfolio Monitor":
                 st.metric("Current Score", f"{lowest_score:.1f}/10")
                 st.markdown(f"Sentiment: **{lowest_pf_stock['Sentiment']:.1f}**")
                 st.markdown(f"Technical: **{lowest_pf_stock['Technical']:.1f}**")
+
+
+# ─── 🤖 AI Agent Orchestrator ────────────────────────────────────────────────
+elif page == "🤖 AI Agent Orchestrator":
+    st.markdown("## 🤖 Multi-Agent Global & Risk Scanner")
+    st.caption("Stateful orchestration of autonomous agents for macro-market analysis.")
+
+    # 1. State Management
+    if "agent_state" not in st.session_state:
+        st.session_state.agent_state = "IDLE"  # IDLE, SCANNING, COMPLETE
+    if "agent_logs" not in st.session_state:
+        st.session_state.agent_logs = []
+    if "scan_results" not in st.session_state:
+        st.session_state.scan_results = {"hawk_score": 0, "spy_trend": "Neutral", "risk_level": "Low"}
+
+    # 2. Controls (Top)
+    c1, c2, c3 = st.columns([2, 1, 1])
+    with c1:
+        # Disable button if scanning
+        if st.session_state.agent_state == "SCANNING":
+            st.button("🚀 SCANNING...", disabled=True, use_container_width=True)
+        else:
+            if st.button("🚀 INITIALIZE GLOBAL SCAN", type="primary", use_container_width=True):
+                st.session_state.agent_state = "SCANNING"
+                st.session_state.agent_logs = []
+                st.rerun()
+        
+    with c2:
+        if st.button("🗑️ Clear Console"):
+            st.session_state.agent_logs = []
+            st.rerun()
+    with c3:
+        if st.button("🔄 Reset System"):
+            st.session_state.agent_state = "IDLE"
+            st.session_state.agent_logs = []
+            st.session_state.scan_results = {"hawk_score": 0, "spy_trend": "Neutral", "risk_level": "Low"}
+            st.rerun()
+
+    # 3. Agent Logic (State Machine)
+    # We use a container to show progress if we are scanning
+    if st.session_state.agent_state == "SCANNING":
+        progress_container = st.status("🤖 AI Agents at work...", expanded=True)
+        
+        # --- AGENT 1: ANALYST (FOMC) ---
+        progress_container.write("🕵️ Analyst Agent: Scouring Federal Reserve & Rate News...")
+        time.sleep(1.0) # Simulate work
+        fomc_data = data_engine.fetch_fomc_sentiment()
+        st.session_state.scan_results["hawk_score"] = fomc_data["score"]
+        st.session_state.agent_logs.append(f"Analyst: FOMC Sentiment is {fomc_data['label']} (Score: {fomc_data['score']})")
+        st.session_state.agent_logs.append(f"Evidence: {fomc_data['evidence'][0]}")
+        
+        # --- AGENT 2: QUANT (SPY MA) ---
+        progress_container.write("🧮 Quant Agent: Calculating Technical Structure ($SPY)...")
+        time.sleep(1.0)
+        spy = data_engine.fetch_price_data("SPY", "1y")
+        if not spy.empty:
+            curr = spy["Close"].iloc[-1]
+            ma200 = spy["Close"].rolling(200).mean().iloc[-1]
+            trend = "Bullish (Above MA200)" if curr > ma200 else "Bearish (Below MA200)"
+            st.session_state.scan_results["spy_trend"] = trend
+            st.session_state.scan_results["price_vs_ma"] = "Above" if curr > ma200 else "Below"
+            st.session_state.agent_logs.append(f"Quant: SPY is {trend}. Price: {curr:.2f} | MA200: {ma200:.2f}")
+        else:
+            st.session_state.agent_logs.append("Quant: Failed to fetch SPY data.")
+        
+        # --- AGENT 3: RISK (GEO) ---
+        progress_container.write("🌍 Risk Agent: Assessing Geopolitical Threats...")
+        time.sleep(1.0)
+        risk_data = data_engine.fetch_geopolitical_risk()
+        st.session_state.scan_results["risk_level"] = risk_data["level"]
+        st.session_state.agent_logs.append(f"Risk: Geopolitical Threat Level is {risk_data['level']}")
+        if risk_data['evidence']:
+            st.session_state.agent_logs.append(f"Flagged: {risk_data['evidence'][0]}")
+
+        progress_container.update(label="✅ Global Scan Complete!", state="complete", expanded=False)
+        st.session_state.agent_state = "COMPLETE"
+        st.rerun()
+
+    # 4. Visualization (Gauge & Console)
+    viz_col, console_col = st.columns([1, 1.5])
+    
+    with viz_col:
+        # Calculate Aggregate Confidence (0-100)
+        res = st.session_state.scan_results
+        
+        # Normalize scores to 0-100 scale
+        # Hawk: -10 (Hawkish/Bad) to +10 (Dovish/Good) -> Map to 0-100
+        s1 = (res["hawk_score"] + 10) * 5 
+        s1 = max(0, min(100, s1))
+        
+        s2 = 100 if "Bullish" in res["spy_trend"] else 0
+        s3 = 100 if "Low" in res["risk_level"] else 50 if "Medium" in res["risk_level"] else 0
+        
+        confidence = (s1 + s2 + s3) / 3
+        
+        fig = go.Figure(go.Indicator(
+            mode = "gauge+number",
+            value = confidence,
+            title = {'text': "Global Confidence"},
+            gauge = {
+                'axis': {'range': [0, 100]},
+                'bar': {'color': COLORS['accent_1']},
+                'steps': [
+                    {'range': [0, 30], 'color': "#555"},
+                    {'range': [30, 70], 'color': "#333"},
+                    {'range': [70, 100], 'color': "#111"}
+                ],
+                'threshold': {
+                    'line': {'color': "red", 'width': 4},
+                    'thickness': 0.75,
+                    'value': confidence
+                }
+            }
+        ))
+        fig.update_layout(height=300, margin=dict(l=20, r=20, t=50, b=20), paper_bgcolor="rgba(0,0,0,0)")
+        st.plotly_chart(fig, use_container_width=True)
+
+        # KILL SWITCH
+        # Condition: Bearish Sentiment (< -2 Hawk) AND Price < MA200 (Bearish Trend)
+        # OR High Geopolitical Risk
+        hawk_bad = res["hawk_score"] < -2
+        trend_bad = "Below" in str(res.get("price_vs_ma", ""))
+        risk_bad = "High" in res["risk_level"]
+        
+        # Kill switch triggers if (Hawk Bad AND Trend Bad) OR (High Risk)
+        is_kill_switch = (hawk_bad and trend_bad) or risk_bad
+        
+        if is_kill_switch:
+            st.error("⚠️ KILL SWITCH ACTIVATED")
+            st.caption(f"Reason: {'High Geo-Risk' if risk_bad else 'Bearish Trend + Hawkish Fed'}")
+            st.button("EXECUTE TRADE", disabled=True, help="❌ BLOCKED: High Risk Consensus")
+        else:
+            st.success("✅ SYSTEM OPERATIONAL")
+            st.button("EXECUTE TRADE", type="primary")
+
+    with console_col:
+        st.markdown("### 📟 Live Agent Transcript")
+        # Use a container with a border to simulate a console
+        with st.container(height=350, border=True):
+            if not st.session_state.agent_logs:
+                st.caption("System Idle. Waiting for manual trigger...")
+            else:
+                for msg in st.session_state.agent_logs:
+                    if "Analyst" in msg: icon = "🕵️"
+                    elif "Quant" in msg: icon = "🧮"
+                    elif "Risk" in msg: icon = "🌍"
+                    elif "Flagged" in msg: icon = "🚩"
+                    elif "Evidence" in msg: icon = "📄"
+                    else: icon = "🤖"
+                    st.markdown(f"**{icon}** {msg}")
+                    
+            if st.session_state.agent_state == "SCANNING":
+                st.markdown("*...Agents are communicating...*")
