@@ -20,6 +20,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 from datetime import datetime
+import time
 
 print("🚀 STARTING APP.PY (AFTER IMPORTS)...", flush=True)
 
@@ -1363,9 +1364,47 @@ elif page == "💼 Portfolio Monitor":
 
 
 # ─── 🤖 AI Agent Orchestrator ────────────────────────────────────────────────
+# ─── 🤖 AI Agent Orchestrator ────────────────────────────────────────────────
 elif page == "🤖 AI Agent Orchestrator":
     st.markdown("## 🤖 Multi-Agent Global & Risk Scanner")
     st.caption("Stateful orchestration of autonomous agents for macro-market analysis.")
+
+    # Custom CSS for "Pro Max" UI
+    st.markdown("""
+    <style>
+        /* Console Style */
+        .console-box {
+            background-color: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            padding: 15px;
+            border-radius: 5px;
+            border: 1px solid #333;
+            height: 350px;
+            overflow-y: auto;
+        }
+        
+        /* Audit Log Entry */
+        .log-entry {
+            margin-bottom: 5px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 2px;
+        }
+        
+        /* Agent Badges */
+        .badge-analyst { color: #00d4aa; font-weight: bold; }
+        .badge-quant { color: #f2a900; font-weight: bold; }
+        .badge-risk { color: #ff4b4b; font-weight: bold; }
+        
+        /* Kill Switch */
+        .kill-switch-active {
+            background-color: #333 !important;
+            color: #666 !important;
+            border: 1px solid #444 !important;
+            cursor: not-allowed;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
     # 1. State Management
     if "agent_state" not in st.session_state:
@@ -1375,16 +1414,21 @@ elif page == "🤖 AI Agent Orchestrator":
     if "scan_results" not in st.session_state:
         st.session_state.scan_results = {"hawk_score": 0, "spy_trend": "Neutral", "risk_level": "Low"}
 
+    # Helper for logging
+    def add_log(agent, message):
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        # Ensure it's a dict for the Pro console
+        st.session_state.agent_logs.append({"time": timestamp, "agent": agent, "msg": message})
+
     # 2. Controls (Top)
     c1, c2, c3 = st.columns([2, 1, 1])
     with c1:
-        # Disable button if scanning
         if st.session_state.agent_state == "SCANNING":
             st.button("🚀 SCANNING...", disabled=True, use_container_width=True)
         else:
             if st.button("🚀 INITIALIZE GLOBAL SCAN", type="primary", use_container_width=True):
                 st.session_state.agent_state = "SCANNING"
-                st.session_state.agent_logs = []
+                st.session_state.agent_logs = [] # Clear logs
                 st.rerun()
         
     with c2:
@@ -1399,58 +1443,62 @@ elif page == "🤖 AI Agent Orchestrator":
             st.rerun()
 
     # 3. Agent Logic (State Machine)
-    # We use a container to show progress if we are scanning
     if st.session_state.agent_state == "SCANNING":
-        progress_container = st.status("🤖 AI Agents at work...", expanded=True)
+        placeholder = st.empty()
         
         # --- AGENT 1: ANALYST (FOMC) ---
-        progress_container.write("🕵️ Analyst Agent: Scouring Federal Reserve & Rate News...")
+        with placeholder.container():
+            st.info("🕵️ Analyst Agent: Connecting to Federal Reserve News Stream...")
         time.sleep(1.0) # Simulate work
         fomc_data = data_engine.fetch_fomc_sentiment()
         st.session_state.scan_results["hawk_score"] = fomc_data["score"]
-        st.session_state.agent_logs.append(f"Analyst: FOMC Sentiment is {fomc_data['label']} (Score: {fomc_data['score']})")
-        st.session_state.agent_logs.append(f"Evidence: {fomc_data['evidence'][0]}")
+        add_log("Analyst", f"FOMC Sentiment: {fomc_data['label']} (Score: {fomc_data['score']})")
+        add_log("Analyst", f"Evidence: {fomc_data['evidence'][0]}")
         
         # --- AGENT 2: QUANT (SPY MA) ---
-        progress_container.write("🧮 Quant Agent: Calculating Technical Structure ($SPY)...")
+        with placeholder.container():
+            st.info("🧮 Quant Agent: Calculating Technical Structure ($SPY)...")
         time.sleep(1.0)
         spy = data_engine.fetch_price_data("SPY", "1y")
         if not spy.empty:
             curr = spy["Close"].iloc[-1]
             ma200 = spy["Close"].rolling(200).mean().iloc[-1]
-            trend = "Bullish (Above MA200)" if curr > ma200 else "Bearish (Below MA200)"
+            trend = "Bullish" if curr > ma200 else "Bearish"
             st.session_state.scan_results["spy_trend"] = trend
             st.session_state.scan_results["price_vs_ma"] = "Above" if curr > ma200 else "Below"
-            st.session_state.agent_logs.append(f"Quant: SPY is {trend}. Price: {curr:.2f} | MA200: {ma200:.2f}")
+            add_log("Quant", f"SPY Price: ${curr:.2f} | MA200: ${ma200:.2f}")
+            add_log("Quant", f"Technical Structure: {trend}")
         else:
-            st.session_state.agent_logs.append("Quant: Failed to fetch SPY data.")
+            add_log("Quant", "Failed to fetch SPY data.")
         
         # --- AGENT 3: RISK (GEO) ---
-        progress_container.write("🌍 Risk Agent: Assessing Geopolitical Threats...")
+        with placeholder.container():
+            st.info("🌍 Risk Agent: Scanning Geopolitical Wires...")
         time.sleep(1.0)
         risk_data = data_engine.fetch_geopolitical_risk()
         st.session_state.scan_results["risk_level"] = risk_data["level"]
-        st.session_state.agent_logs.append(f"Risk: Geopolitical Threat Level is {risk_data['level']}")
+        add_log("Risk", f"Geopolitical Threat Level: {risk_data['level']}")
         if risk_data['evidence']:
-            st.session_state.agent_logs.append(f"Flagged: {risk_data['evidence'][0]}")
+            add_log("Risk", f"Flagged: {risk_data['evidence'][0]}")
 
-        progress_container.update(label="✅ Global Scan Complete!", state="complete", expanded=False)
+        # Completion
         st.session_state.agent_state = "COMPLETE"
         st.rerun()
 
     # 4. Visualization (Gauge & Console)
-    viz_col, console_col = st.columns([1, 1.5])
+    viz_col, console_col = st.columns([1.5, 2])
     
     with viz_col:
-        # Calculate Aggregate Confidence (0-100)
+        st.markdown("#### 🧭 Aggregate Confidence")
+        
+        # Calculate Confidence Logic
         res = st.session_state.scan_results
         
         # Normalize scores to 0-100 scale
-        # Hawk: -10 (Hawkish/Bad) to +10 (Dovish/Good) -> Map to 0-100
         s1 = (res["hawk_score"] + 10) * 5 
         s1 = max(0, min(100, s1))
         
-        s2 = 100 if "Bullish" in res["spy_trend"] else 0
+        s2 = 100 if "Bullish" in str(res.get("spy_trend", "")) else 0
         s3 = 100 if "Low" in res["risk_level"] else 50 if "Medium" in res["risk_level"] else 0
         
         confidence = (s1 + s2 + s3) / 3
@@ -1458,58 +1506,77 @@ elif page == "🤖 AI Agent Orchestrator":
         fig = go.Figure(go.Indicator(
             mode = "gauge+number",
             value = confidence,
-            title = {'text': "Global Confidence"},
+            domain = {'x': [0, 1], 'y': [0, 1]},
+            title = {'text': "Bullish Conviction"},
             gauge = {
-                'axis': {'range': [0, 100]},
-                'bar': {'color': COLORS['accent_1']},
+                'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "white"},
+                'bar': {'color': "#00d4aa"},
+                'bgcolor': "rgba(0,0,0,0)",
+                'borderwidth': 2,
+                'bordercolor': "#333",
                 'steps': [
-                    {'range': [0, 30], 'color': "#555"},
-                    {'range': [30, 70], 'color': "#333"},
-                    {'range': [70, 100], 'color': "#111"}
-                ],
+                    {'range': [0, 30], 'color': 'rgba(255, 75, 75, 0.3)'},
+                    {'range': [30, 70], 'color': 'rgba(255, 255, 0, 0.3)'},
+                    {'range': [70, 100], 'color': 'rgba(0, 212, 170, 0.3)'}],
                 'threshold': {
-                    'line': {'color': "red", 'width': 4},
+                    'line': {'color': "white", 'width': 4},
                     'thickness': 0.75,
                     'value': confidence
                 }
             }
         ))
-        fig.update_layout(height=300, margin=dict(l=20, r=20, t=50, b=20), paper_bgcolor="rgba(0,0,0,0)")
+        fig.update_layout(height=350, margin=dict(l=20, r=20, t=50, b=20), paper_bgcolor="rgba(0,0,0,0)", font={'color': "white"})
         st.plotly_chart(fig, use_container_width=True)
 
-        # KILL SWITCH
-        # Condition: Bearish Sentiment (< -2 Hawk) AND Price < MA200 (Bearish Trend)
-        # OR High Geopolitical Risk
+        # KILL SWITCH LOGIC
         hawk_bad = res["hawk_score"] < -2
         trend_bad = "Below" in str(res.get("price_vs_ma", ""))
         risk_bad = "High" in res["risk_level"]
         
-        # Kill switch triggers if (Hawk Bad AND Trend Bad) OR (High Risk)
-        is_kill_switch = (hawk_bad and trend_bad) or risk_bad
+        kill_switch = (hawk_bad and trend_bad) or risk_bad
         
-        if is_kill_switch:
-            st.error("⚠️ KILL SWITCH ACTIVATED")
-            st.caption(f"Reason: {'High Geo-Risk' if risk_bad else 'Bearish Trend + Hawkish Fed'}")
-            st.button("EXECUTE TRADE", disabled=True, help="❌ BLOCKED: High Risk Consensus")
+        st.markdown("---")
+        st.markdown("#### 🚦 Trade Execution Protocol")
+        
+        if kill_switch:
+            st.error("⛔ KILL SWITCH ACTIVATED")
+            reason = []
+            if hawk_bad: reason.append("Hawkish Fed")
+            if trend_bad: reason.append("Bearish Trend")
+            if risk_bad: reason.append("Geopolitical Instability")
+            
+            st.caption(f"Consensus: HIGH RISK ({', '.join(reason)})")
+            
+            st.button("EXECUTE LONG TRADE", disabled=True, key="btn_exec_disabled")
         else:
             st.success("✅ SYSTEM OPERATIONAL")
-            st.button("EXECUTE TRADE", type="primary")
+            st.caption("Consensus: Conditions Favorable for Deployment")
+            if st.button("⚡ EXECUTE LONG TRADE", type="primary"):
+                st.toast("🚀 Order Sent to Broker API!", icon="✅")
 
     with console_col:
-        st.markdown("### 📟 Live Agent Transcript")
-        # Use a container with a border to simulate a console
-        with st.container(height=350, border=True):
-            if not st.session_state.agent_logs:
-                st.caption("System Idle. Waiting for manual trigger...")
-            else:
-                for msg in st.session_state.agent_logs:
-                    if "Analyst" in msg: icon = "🕵️"
-                    elif "Quant" in msg: icon = "🧮"
-                    elif "Risk" in msg: icon = "🌍"
-                    elif "Flagged" in msg: icon = "🚩"
-                    elif "Evidence" in msg: icon = "📄"
-                    else: icon = "🤖"
-                    st.markdown(f"**{icon}** {msg}")
-                    
-            if st.session_state.agent_state == "SCANNING":
-                st.markdown("*...Agents are communicating...*")
+        st.markdown("#### 📟 Live Agent Transcript")
+        
+        # Render Console
+        log_html = '<div class="console-box">'
+        if not st.session_state.agent_logs:
+            log_html += '<div style="color:#666; font-style:italic;">System Initialized. Awaiting manual trigger...</div>'
+        else:
+            # Handle backward compatibility if logs are strings (from previous runs)
+            # Filter for dicts only
+            valid_logs = [l for l in st.session_state.agent_logs if isinstance(l, dict)]
+            
+            for log in valid_logs[::-1]: # Newest top
+                color = "#00d4aa" if log['agent'] == "Analyst" else "#f2a900" if log['agent'] == "Quant" else "#ff4b4b"
+                icon = "🕵️" if log['agent'] == "Analyst" else "🧮" if log['agent'] == "Quant" else "🌍"
+                
+                log_html += f"""
+                <div class="log-entry">
+                    <span style="color:#666">[{log['time']}]</span> 
+                    <span style="color:{color}">{icon} {log['agent']}:</span> 
+                    {log['msg']}
+                </div>
+                """
+        log_html += '</div>'
+        
+        st.markdown(log_html, unsafe_allow_html=True)
