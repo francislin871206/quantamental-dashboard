@@ -490,3 +490,33 @@ def generate_market_summary(top_picks: list) -> str:
 
     summary += "**Strategy Insight:** These companies are showing the rare convergence of positive social sentiment, insider conviction, and nearing catalysts that defines a 'Revolution' trade."
     return summary
+
+
+# ─── War Room / Macro Data ───────────────────────────────────────────────────
+
+def fetch_fomc_sentiment():
+    """
+    Simulates fetching FOMC sentiment. 
+    In a real production app, this would scrape federalreserve.gov or use an API.
+    """
+    import random
+    # Simulated scenarios
+    scenarios = [
+        {"score": -5, "label": "Hawkish 🦅", "evidence": ["Fed Chair signals 'higher for longer' rates.", "Inflation data remains sticky."]},
+        {"score": 8, "label": "Dovish 🕊️", "evidence": ["Fed hints at rate cuts in next meeting.", "Cooling labor market data."]},
+        {"score": 0, "label": "Neutral ⚖️", "evidence": ["Fed awaiting more data before decision.", "Mixed economic signals."]}
+    ]
+    return random.choice(scenarios)
+
+def fetch_geopolitical_risk():
+    """
+    Simulates fetching Geopolitical Risk Level.
+    In a real app, this would scrape news sites or use a risk index API.
+    """
+    import random
+    levels = [
+        {"level": "Low 🟢", "evidence": []}, 
+        {"level": "Medium 🟡", "evidence": ["Rising tensions in energy corridors."]}, 
+        {"level": "High 🔴", "evidence": ["Conflict escalation reported in key region."]}
+    ]
+    return random.choice(levels)
