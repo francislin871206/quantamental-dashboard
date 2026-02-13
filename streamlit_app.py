@@ -1570,13 +1570,7 @@ elif page == "🤖 AI Agent Orchestrator":
                 color = "#00d4aa" if log['agent'] == "Analyst" else "#f2a900" if log['agent'] == "Quant" else "#ff4b4b"
                 icon = "🕵️" if log['agent'] == "Analyst" else "🧮" if log['agent'] == "Quant" else "🌍"
                 
-                log_html += f"""
-                <div class="log-entry">
-                    <span style="color:#666">[{log['time']}]</span> 
-                    <span style="color:{color}">{icon} {log['agent']}:</span> 
-                    {log['msg']}
-                </div>
-                """
+                log_html += f'<div class="log-entry"><span style="color:#666">[{log["time"]}]</span><span style="color:{color}">{icon} {log["agent"]}:</span>{log["msg"]}</div>'
         log_html += '</div>'
         
         st.markdown(log_html, unsafe_allow_html=True)
